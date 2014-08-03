@@ -547,6 +547,12 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 			}
 		}
 
+#ifdef CONFIG_REMOTECACHE
+		/* page is waiting for remotecache ack */
+		if (PageRemote(page))
+			continue;
+#endif
+
 		/*
 		 * Skip if free. page_order cannot be used without zone->lock
 		 * as nothing prevents parallel allocations or buddy merging.
