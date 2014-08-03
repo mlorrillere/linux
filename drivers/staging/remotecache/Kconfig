@@ -3,4 +3,25 @@ config REMOTECACHE
 	default n
 	depends on CLEANCACHE
 	help
+	  Enable support for remotecache API
+
+config REMOTECACHE_MODULE
+	tristate "Remotecache module"
+	default m
+	depends on REMOTECACHE && LIBCRC32C && m
+	help
 	  Enable support for remotecache
+
+config REMOTECACHE_POLICY_LRU
+	tristate "Remotecache LRU policy module"
+	default m
+	depends on REMOTECACHE_MODULE && m
+	help
+	  Simple LRU policy for page reclaiming.
+
+config REMOTECACHE_DEBUG
+	bool "Enable remotecache debug messages"
+	default n
+	depends on REMOTECACHE
+	help
+	  Enable additionnal debugging messages for remotecache.
