@@ -821,6 +821,17 @@ void release_pages(struct page **pages, int nr, int cold)
 	struct lruvec *lruvec;
 	unsigned long uninitialized_var(flags);
 
+#ifdef CONFIG_REMOTECACHE
+	for (i = 0; i < nr; i++) {
+		struct page *page = pages[i];
+
+		if (PageRemote(page) && !PagePrivate(page)) {
+			wait_on_page_locked(page);
+			ClearPageRemote(page);
+		}
+	}
+#endif
+
 	for (i = 0; i < nr; i++) {
 		struct page *page = pages[i];
 

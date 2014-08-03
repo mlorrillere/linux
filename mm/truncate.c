@@ -533,7 +533,12 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
 				continue;
 			WARN_ON(page->index != index);
 			ret = invalidate_inode_page(page);
+#ifdef CONFIG_REMOTECACHE
+			if (!PageRemote(page))
+				unlock_page(page);
+#else
 			unlock_page(page);
+#endif
 			/*
 			 * Invalidation is a hint that the page is no longer
 			 * of interest and try to speed up its reclaim.

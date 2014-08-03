@@ -43,6 +43,7 @@
 #include <linux/sysctl.h>
 #include <linux/oom.h>
 #include <linux/prefetch.h>
+#include <linux/remotecache.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -64,6 +65,9 @@ struct scan_control {
 
 	/* How many pages shrink_list() should reclaim */
 	unsigned long nr_to_reclaim;
+
+	/* Number of pages sent to a remote host */
+	unsigned long nr_remote;
 
 	unsigned long hibernation_mode;
 
@@ -94,6 +98,9 @@ struct scan_control {
 	 * are scanned.
 	 */
 	nodemask_t	*nodemask;
+
+	/* List of remote pages scheduled for release */
+	struct list_head remote_pages;
 };
 
 #define lru_to_page(_head) (list_entry((_head)->prev, struct page, lru))
@@ -615,7 +622,16 @@ int remove_mapping(struct address_space *mapping, struct page *page)
 		 * drops the pagecache ref for us without requiring another
 		 * atomic operation.
 		 */
+#ifdef CONFIG_REMOTECACHE
+		if (!PageRemote(page))
+			page_unfreeze_refs(page, 1);
+		else
+			atomic_dec(&page->_count);
+#else
 		page_unfreeze_refs(page, 1);
+#endif
+
+
 		return 1;
 	}
 	return 0;
@@ -800,12 +816,14 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 {
 	LIST_HEAD(ret_pages);
 	LIST_HEAD(free_pages);
+	LIST_HEAD(remote_pages);
 	int pgactivate = 0;
 	unsigned long nr_unqueued_dirty = 0;
 	unsigned long nr_dirty = 0;
 	unsigned long nr_congested = 0;
 	unsigned long nr_reclaimed = 0;
 	unsigned long nr_writeback = 0;
+	unsigned long nr_remote = 0;
 	unsigned long nr_immediate = 0;
 
 	cond_resched();
@@ -1082,6 +1100,16 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		if (!mapping || !__remove_mapping(mapping, page, true))
 			goto keep_locked;
 
+#ifdef CONFIG_REMOTECACHE
+		if (PageRemote(page)) {
+			//unlock_page(page);
+			list_add(&page->lru, &remote_pages);
+			nr_remote++;
+			nr_reclaimed++;
+			continue;
+		}
+#endif
+
 		/*
 		 * At this point, we have no other references and there is
 		 * no way to pick any more up (removed from LRU, removed
@@ -1124,12 +1152,14 @@ keep:
 	free_hot_cold_page_list(&free_pages, 1);
 
 	list_splice(&ret_pages, page_list);
+	list_splice(&remote_pages, &sc->remote_pages);
 	count_vm_events(PGACTIVATE, pgactivate);
 	mem_cgroup_uncharge_end();
 	*ret_nr_dirty += nr_dirty;
 	*ret_nr_congested += nr_congested;
 	*ret_nr_unqueued_dirty += nr_unqueued_dirty;
 	*ret_nr_writeback += nr_writeback;
+	sc->nr_remote += nr_remote;
 	*ret_nr_immediate += nr_immediate;
 	return nr_reclaimed;
 }
@@ -2024,6 +2054,35 @@ out:
 	}
 }
 
+#ifdef CONFIG_REMOTECACHE
+static void wait_for_remote_pages(struct list_head *remote_pages)
+{
+	struct page *page;
+	list_for_each_entry(page, remote_pages, lru) {
+		int backoff = 1;
+		wait_on_page_locked(page);
+		ClearPageRemote(page);
+
+		/* Sometimes remotecache path goes faster than TCP and the
+		 * page is reported completed while TCP did not yet put the
+		 * last page ref. */
+		while (page_count(page) != 2) {
+			if (backoff < HZ)
+				backoff *= 2;
+
+			set_current_state(TASK_UNINTERRUPTIBLE);
+			schedule_timeout(backoff);
+		}
+
+		WARN_ON(!page_freeze_refs(page, 2));
+	}
+	free_hot_cold_page_list(remote_pages, 1);
+}
+#else
+static inline void wait_for_remote_pages(struct list_head *remote_pages)
+{}
+#endif
+
 /*
  * This is a basic per-zone page freer.  Used by both kswapd and direct reclaim.
  */
@@ -2037,6 +2096,9 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 	unsigned long nr_to_reclaim = sc->nr_to_reclaim;
 	struct blk_plug plug;
 	bool scan_adjusted = false;
+	struct remotecache_plug rm_plug;
+
+	INIT_LIST_HEAD(&sc->remote_pages);
 
 	get_scan_count(lruvec, sc, nr);
 
@@ -2044,6 +2106,7 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 	memcpy(targets, nr, sizeof(nr));
 
 	blk_start_plug(&plug);
+	remotecache_start_plug(&rm_plug);
 	while (nr[LRU_INACTIVE_ANON] || nr[LRU_ACTIVE_FILE] ||
 					nr[LRU_INACTIVE_FILE]) {
 		unsigned long nr_anon, nr_file, percentage;
@@ -2059,6 +2122,13 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 			}
 		}
 
+		if (sc->nr_remote >= 512 && !list_empty(&sc->remote_pages)) {
+			remotecache_finish_plug(&rm_plug);
+			remotecache_start_plug(&rm_plug);
+			wait_for_remote_pages(&sc->remote_pages);
+			INIT_LIST_HEAD(&sc->remote_pages);
+			sc->nr_remote = 0;
+		}
 		if (nr_reclaimed < nr_to_reclaim || scan_adjusted)
 			continue;
 
@@ -2113,6 +2183,13 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 
 		scan_adjusted = true;
 	}
+	remotecache_finish_plug(&rm_plug);
+	if (!list_empty(&sc->remote_pages)) {
+		wait_for_remote_pages(&sc->remote_pages);
+		INIT_LIST_HEAD(&sc->remote_pages);
+		sc->nr_remote = 0;
+	}
+
 	blk_finish_plug(&plug);
 	sc->nr_reclaimed += nr_reclaimed;
 
@@ -2461,6 +2538,7 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
 		vmpressure_prio(sc->gfp_mask, sc->target_mem_cgroup,
 				sc->priority);
 		sc->nr_scanned = 0;
+		sc->nr_remote = 0;
 		aborted_reclaim = shrink_zones(zonelist, sc);
 
 		total_scanned += sc->nr_scanned;
