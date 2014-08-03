@@ -42,6 +42,7 @@ extern void __cleancache_put_page(struct page *);
 extern void __cleancache_invalidate_page(struct address_space *, struct page *);
 extern void __cleancache_invalidate_inode(struct address_space *);
 extern void __cleancache_invalidate_fs(struct super_block *);
+extern int get_poolid_from_fake(int fake_pool_id);
 
 #ifdef CONFIG_CLEANCACHE
 #define cleancache_enabled (1)

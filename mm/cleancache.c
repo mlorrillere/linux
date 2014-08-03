@@ -204,7 +204,7 @@ static int cleancache_get_key(struct inode *inode,
 /*
  * Returns a pool_id that is associated with a given fake poolid.
  */
-static int get_poolid_from_fake(int fake_pool_id)
+int get_poolid_from_fake(int fake_pool_id)
 {
 	if (fake_pool_id >= FAKE_SHARED_FS_POOLID_OFFSET)
 		return shared_fs_poolid_map[fake_pool_id -
@@ -213,6 +213,7 @@ static int get_poolid_from_fake(int fake_pool_id)
 		return fs_poolid_map[fake_pool_id - FAKE_FS_POOLID_OFFSET];
 	return FS_NO_BACKEND;
 }
+EXPORT_SYMBOL(get_poolid_from_fake);
 
 /*
  * "Get" data from cleancache associated with the poolid/inode/index
