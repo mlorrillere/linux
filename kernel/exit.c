@@ -53,6 +53,7 @@
 #include <linux/oom.h>
 #include <linux/writeback.h>
 #include <linux/shm.h>
+#include <linux/remotecache.h>
 
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
@@ -702,6 +703,7 @@ void do_exit(long code)
 	profile_task_exit(tsk);
 
 	WARN_ON(blk_needs_flush_plug(tsk));
+	WARN_ON(remotecache_needs_flush_plug(tsk));
 
 	if (unlikely(in_interrupt()))
 		panic("Aiee, killing interrupt handler!");

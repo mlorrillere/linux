@@ -1371,6 +1371,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 #ifdef CONFIG_BLOCK
 	p->plug = NULL;
 #endif
+#ifdef CONFIG_REMOTECACHE
+	p->remotecache_plug = NULL;
+#endif
 #ifdef CONFIG_FUTEX
 	p->robust_list = NULL;
 #ifdef CONFIG_COMPAT

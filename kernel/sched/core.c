@@ -72,6 +72,7 @@
 #include <linux/slab.h>
 #include <linux/init_task.h>
 #include <linux/binfmts.h>
+#include <linux/remotecache.h>
 #include <linux/context_tracking.h>
 #include <linux/compiler.h>
 
@@ -2745,6 +2746,9 @@ static inline void sched_submit_work(struct task_struct *tsk)
 	 */
 	if (blk_needs_flush_plug(tsk))
 		blk_schedule_flush_plug(tsk);
+
+	if (remotecache_needs_flush_plug(tsk))
+		remotecache_flush_plug(tsk);
 }
 
 asmlinkage __visible void __sched schedule(void)
@@ -4248,6 +4252,7 @@ void __sched io_schedule(void)
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
 	blk_flush_plug(current);
+	remotecache_flush_plug(current);
 	current->in_iowait = 1;
 	schedule();
 	current->in_iowait = 0;
@@ -4264,6 +4269,7 @@ long __sched io_schedule_timeout(long timeout)
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
 	blk_flush_plug(current);
+	remotecache_flush_plug(current);
 	current->in_iowait = 1;
 	ret = schedule_timeout(timeout);
 	current->in_iowait = 0;

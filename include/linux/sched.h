@@ -1438,6 +1438,10 @@ struct task_struct {
 	struct blk_plug *plug;
 #endif
 
+#ifdef CONFIG_REMOTECACHE
+	struct remotecache_plug *remotecache_plug;
+#endif
+
 /* VM state */
 	struct reclaim_state *reclaim_state;
 

@@ -14,6 +14,9 @@ struct remotecache_ops {
 	int (*readpages) (struct file *, struct address_space *,
 			struct list_head *pages, unsigned nr_pages);
 	void (*releasepage) (struct page *page);
+	void (*start_plug)(struct remotecache_plug *plug);
+	void (*finish_plug)(struct remotecache_plug *plug);
+	void (*flush_plug)(struct task_struct *tsk);
 	void (*suspend) (void);
 	void (*resume) (void);
 };
@@ -27,6 +30,32 @@ extern int remotecache_readpages(struct file *, struct address_space *,
 		struct list_head *pages, unsigned nr_pages);
 
 extern void remotecache_register_ops(struct remotecache_ops *);
+
+static inline void remotecache_start_plug(struct remotecache_plug *plug)
+{
+	if (remotecache_ops && remotecache_ops->start_plug)
+		remotecache_ops->start_plug(plug);
+}
+
+static inline void remotecache_finish_plug(struct remotecache_plug *plug)
+{
+	if (remotecache_ops && remotecache_ops->finish_plug)
+		remotecache_ops->finish_plug(plug);
+}
+
+static inline void remotecache_flush_plug(struct task_struct *tsk)
+{
+	if (remotecache_ops && remotecache_ops->flush_plug &&
+			tsk->remotecache_plug)
+		remotecache_ops->flush_plug(tsk);
+}
+
+static inline bool remotecache_needs_flush_plug(struct task_struct *tsk)
+{
+	struct remotecache_plug *plug = tsk->remotecache_plug;
+
+	return plug && !list_empty(&plug->list);
+}
 
 static inline void remotecache_releasepage(struct page *page)
 {
@@ -60,6 +89,13 @@ static inline int remotecache_readpages(struct file *file, struct address_space 
 
 static inline void remotecache_register_ops(struct remotecache_ops *ops) { }
 
+static inline void remotecache_start_plug(struct remotecache_plug *plug) { }
+static inline void remotecache_finish_plug(struct remotecache_plug *plug) { }
+static inline void remotecache_flush_plug(struct task_struct *tsk) { };
+static inline bool remotecache_needs_flush_plug(struct task_struct *tsk)
+{
+	return false;
+}
 static inline void remotecache_releasepage(struct page *page) {}
 static inline void remotecache_suspend(void) {}
 static inline void remotecache_resume(void) {}

@@ -20,6 +20,7 @@
 #include <linux/buffer_head.h>	/* grr. try_to_release_page,
 				   do_invalidatepage */
 #include <linux/cleancache.h>
+#include <linux/remotecache.h>
 #include "internal.h"
 
 static void clear_exceptional_entry(struct address_space *mapping,
@@ -250,7 +251,9 @@ void truncate_inode_pages_range(struct address_space *mapping,
 	pgoff_t		indices[PAGEVEC_SIZE];
 	pgoff_t		index;
 	int		i;
+	struct remotecache_plug rm_plug;
 
+	remotecache_start_plug(&rm_plug);
 #ifdef CONFIG_REMOTECACHE
 	/*
 	 * truncate_inode_pages_ranges is called both to invalidate a page
@@ -265,8 +268,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
 #else
 	cleancache_invalidate_inode(mapping);
 #endif
-	if (mapping->nrpages == 0 && mapping->nrshadows == 0)
+	if (mapping->nrpages == 0 && mapping->nrshadows == 0) {
+		remotecache_finish_plug(&rm_plug);
 		return;
+	}
 
 	/* Offsets within partial pages */
 	partial_start = lstart & (PAGE_CACHE_SIZE - 1);
@@ -412,6 +417,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
 #else
 	cleancache_invalidate_inode(mapping);
 #endif
+	remotecache_finish_plug(&rm_plug);
 }
 EXPORT_SYMBOL(truncate_inode_pages_range);
 
@@ -502,8 +508,10 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
 	unsigned long ret;
 	unsigned long count = 0;
 	int i;
+	struct remotecache_plug rm_plug;
 
 	pagevec_init(&pvec, 0);
+	remotecache_start_plug(&rm_plug);
 	while (index <= end && pagevec_lookup_entries(&pvec, mapping, index,
 			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1,
 			indices)) {
@@ -540,6 +548,7 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
 		cond_resched();
 		index++;
 	}
+	remotecache_finish_plug(&rm_plug);
 	return count;
 }
 EXPORT_SYMBOL(invalidate_mapping_pages);
@@ -609,7 +618,9 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
 	int ret = 0;
 	int ret2 = 0;
 	int did_range_unmap = 0;
+	struct remotecache_plug rm_plug;
 
+	remotecache_start_plug(&rm_plug);
 	cleancache_invalidate_inode(mapping);
 	pagevec_init(&pvec, 0);
 	index = start;
@@ -674,6 +685,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
 		index++;
 	}
 	cleancache_invalidate_inode(mapping);
+	remotecache_finish_plug(&rm_plug);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(invalidate_inode_pages2_range);
