@@ -109,6 +109,9 @@ enum pageflags {
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	PG_compound_lock,
 #endif
+#ifdef CONFIG_REMOTECACHE
+	PG_remote,		/* Remote page */
+#endif
 	__NR_PAGEFLAGS,
 
 	/* Filesystems */
@@ -210,6 +213,10 @@ PAGEFLAG(Reserved, reserved) __CLEARPAGEFLAG(Reserved, reserved)
 PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
 
 __PAGEFLAG(SlobFree, slob_free)
+
+#ifdef CONFIG_REMOTECACHE
+PAGEFLAG(Remote, remote) TESTSCFLAG(Remote, remote)
+#endif
 
 /*
  * Private page markings that may be used by the filesystem that owns the page
@@ -508,6 +515,7 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
  * Flags checked when a page is freed.  Pages being freed should not have
  * these flags set.  It they are, there is a problem.
  */
+#ifndef CONFIG_REMOTECACHE
 #define PAGE_FLAGS_CHECK_AT_FREE \
 	(1 << PG_lru	 | 1 << PG_locked    | \
 	 1 << PG_private | 1 << PG_private_2 | \
@@ -515,6 +523,15 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
 	 1 << PG_slab	 | 1 << PG_swapcache | 1 << PG_active | \
 	 1 << PG_unevictable | __PG_MLOCKED | __PG_HWPOISON | \
 	 __PG_COMPOUND_LOCK)
+#else
+#define PAGE_FLAGS_CHECK_AT_FREE \
+	(1 << PG_lru	 | 1 << PG_locked    | \
+	 1 << PG_private | 1 << PG_private_2 | \
+	 1 << PG_writeback | 1 << PG_reserved | \
+	 1 << PG_slab	 | 1 << PG_swapcache | 1 << PG_active | \
+	 1 << PG_unevictable | 1 << PG_remote | \
+	 __PG_MLOCKED | __PG_HWPOISON | __PG_COMPOUND_LOCK)
+#endif
 
 /*
  * Flags checked when a page is prepped for return by the page allocator.

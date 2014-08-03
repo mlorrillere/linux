@@ -3128,6 +3128,9 @@ void show_free_areas(unsigned int filter)
 	printk("active_anon:%lu inactive_anon:%lu isolated_anon:%lu\n"
 		" active_file:%lu inactive_file:%lu isolated_file:%lu\n"
 		" unevictable:%lu"
+#ifdef CONFIG_REMOTECACHE
+		" remote(pending):%lu"
+#endif
 		" dirty:%lu writeback:%lu unstable:%lu\n"
 		" free:%lu slab_reclaimable:%lu slab_unreclaimable:%lu\n"
 		" mapped:%lu shmem:%lu pagetables:%lu bounce:%lu\n"
@@ -3139,6 +3142,9 @@ void show_free_areas(unsigned int filter)
 		global_page_state(NR_INACTIVE_FILE),
 		global_page_state(NR_ISOLATED_FILE),
 		global_page_state(NR_UNEVICTABLE),
+#ifdef CONFIG_REMOTECACHE
+		global_page_state(NR_REMOTE),
+#endif
 		global_page_state(NR_FILE_DIRTY),
 		global_page_state(NR_WRITEBACK),
 		global_page_state(NR_UNSTABLE_NFS),
@@ -3173,6 +3179,9 @@ void show_free_areas(unsigned int filter)
 			" managed:%lukB"
 			" mlocked:%lukB"
 			" dirty:%lukB"
+#ifdef CONFIG_REMOTECACHE
+			" remote(pending):%lukB"
+#endif
 			" writeback:%lukB"
 			" mapped:%lukB"
 			" shmem:%lukB"
@@ -3197,6 +3206,9 @@ void show_free_areas(unsigned int filter)
 			K(zone_page_state(zone, NR_ACTIVE_FILE)),
 			K(zone_page_state(zone, NR_INACTIVE_FILE)),
 			K(zone_page_state(zone, NR_UNEVICTABLE)),
+#ifdef CONFIG_REMOTECACHE
+			K(zone_page_state(zone, NR_REMOTE)),
+#endif
 			K(zone_page_state(zone, NR_ISOLATED_ANON)),
 			K(zone_page_state(zone, NR_ISOLATED_FILE)),
 			K(zone->present_pages),
@@ -6553,6 +6565,9 @@ static const struct trace_print_flags pageflag_names[] = {
 #endif
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	{1UL << PG_compound_lock,	"compound_lock"	},
+#endif
+#ifdef CONFIG_REMOTECACHE
+	{1UL << PG_remote,		"remote"	},
 #endif
 };
 
