@@ -561,6 +561,9 @@ static void evict(struct inode *inode)
 
 	spin_lock(&inode->i_lock);
 	wake_up_bit(&inode->i_state, __I_NEW);
+#ifdef CONFIG_REMOTECACHE
+	inode->i_state &= ~I_RECLAIM;
+#endif
 	BUG_ON(inode->i_state != (I_FREEING | I_CLEAR));
 	spin_unlock(&inode->i_lock);
 
@@ -734,7 +737,11 @@ inode_lru_isolate(struct list_head *item, spinlock_t *lru_lock, void *arg)
 	}
 
 	WARN_ON(inode->i_state & I_NEW);
-	inode->i_state |= I_FREEING;
+#ifdef CONFIG_REMOTECACHE
+	inode->i_state |= (I_FREEING|I_RECLAIM);
+#else
+	inode->i_state |= (I_FREEING);
+#endif
 	list_move(&inode->i_lru, freeable);
 	spin_unlock(&inode->i_lock);
 

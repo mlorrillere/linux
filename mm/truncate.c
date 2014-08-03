@@ -251,7 +251,20 @@ void truncate_inode_pages_range(struct address_space *mapping,
 	pgoff_t		index;
 	int		i;
 
+#ifdef CONFIG_REMOTECACHE
+	/*
+	 * truncate_inode_pages_ranges is called both to invalidate a page
+	 * from the cache (i.e.: we do not want it to be cached anymore) and
+	 * to remove a victim, unused, inode. For the second case, we want its
+	 * pages to be sent to a second level victim cache. We detect this
+	 * case by checking for the I_RECLAIM flag.
+	 */
+	if (!(mapping->host->i_state & I_RECLAIM)) {
+		cleancache_invalidate_inode(mapping);
+	}
+#else
 	cleancache_invalidate_inode(mapping);
+#endif
 	if (mapping->nrpages == 0 && mapping->nrshadows == 0)
 		return;
 
@@ -392,7 +405,13 @@ void truncate_inode_pages_range(struct address_space *mapping,
 		mem_cgroup_uncharge_end();
 		index++;
 	}
+#ifdef CONFIG_REMOTECACHE
+	if (!(mapping->host->i_state & I_RECLAIM)) {
+		cleancache_invalidate_inode(mapping);
+	}
+#else
 	cleancache_invalidate_inode(mapping);
+#endif
 }
 EXPORT_SYMBOL(truncate_inode_pages_range);
 
