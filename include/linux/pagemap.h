@@ -177,6 +177,17 @@ static inline int page_cache_get_speculative(struct page *page)
 	atomic_inc(&page->_count);
 
 #else
+#ifdef CONFIG_REMOTECACHE
+	if (PageRemote(page)) {
+		/*
+		 * We check for PageRemote to avoid a race condition between
+		 * remotecache and page cache after rc_put_page unfreeze page
+		 * count and before __delete_from_page_cache removes the page
+		 * from the radix tree
+		 */
+		return 0;
+	}
+#endif
 	if (unlikely(!get_page_unless_zero(page))) {
 		/*
 		 * Either the page has been freed, or will be freed.
