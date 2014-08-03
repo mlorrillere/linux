@@ -12,6 +12,7 @@
 #include <linux/mount.h>
 #include <linux/slab.h>
 #include <linux/file.h>
+#include <linux/remotecache.h>
 #include <linux/swap.h>
 #include "internal.h"
 
@@ -116,7 +117,7 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
 			goto unlock_discard;
 
 		_debug("reissue read");
-		ret = bmapping->a_ops->readpage(NULL, backpage);
+		ret = remotecache_readpage(NULL, backpage);
 		if (ret < 0)
 			goto unlock_discard;
 	}
@@ -282,7 +283,7 @@ installed_new_backing_page:
 	newpage = NULL;
 
 read_backing_page:
-	ret = bmapping->a_ops->readpage(NULL, backpage);
+	ret = remotecache_readpage(NULL, backpage);
 	if (ret < 0)
 		goto read_error;
 
@@ -526,7 +527,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
 		newpage = NULL;
 
 	reread_backing_page:
-		ret = bmapping->a_ops->readpage(NULL, backpage);
+		ret = remotecache_readpage(NULL, backpage);
 		if (ret < 0)
 			goto read_error;
 

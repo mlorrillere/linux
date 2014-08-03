@@ -1,0 +1,6 @@
+config REMOTECACHE
+	bool "Remotecache"
+	default n
+	depends on CLEANCACHE
+	help
+	  Enable support for remotecache

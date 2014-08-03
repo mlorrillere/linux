@@ -41,6 +41,7 @@
 #include <linux/bitops.h>
 #include <linux/mpage.h>
 #include <linux/bit_spinlock.h>
+#include <linux/remotecache.h>
 #include <trace/events/block.h>
 
 static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
@@ -2776,7 +2777,7 @@ has_buffers:
 
 	/* Ok, it's mapped. Make sure it's up-to-date */
 	if (!PageUptodate(page)) {
-		err = mapping->a_ops->readpage(NULL, page);
+		err = remotecache_readpage(NULL, page);
 		if (err) {
 			page_cache_release(page);
 			goto out;

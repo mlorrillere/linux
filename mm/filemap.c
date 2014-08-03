@@ -34,6 +34,7 @@
 #include <linux/memcontrol.h>
 #include <linux/cleancache.h>
 #include <linux/rmap.h>
+#include <linux/remotecache.h>
 #include "internal.h"
 
 #define CREATE_TRACE_POINTS
@@ -1593,7 +1594,7 @@ readpage:
 		 */
 		ClearPageError(page);
 		/* Start the actual read. The read will unlock the page. */
-		error = mapping->a_ops->readpage(filp, page);
+		error = remotecache_readpage(filp, page);
 
 		if (unlikely(error)) {
 			if (error == AOP_TRUNCATED_PAGE) {
@@ -1617,10 +1618,32 @@ readpage:
 					page_cache_release(page);
 					goto find_page;
 				}
-				unlock_page(page);
-				shrink_readahead_size_eio(filp, ra);
-				error = -EIO;
-				goto readpage_error;
+
+				/*
+				 * Reread the page in case of remotecache false positive
+				 */
+				error = remotecache_readpage(filp, page);
+
+				if (unlikely(error)) {
+					if (error == AOP_TRUNCATED_PAGE) {
+						page_cache_release(page);
+						goto find_page;
+					}
+					goto readpage_error;
+				}
+
+				if (!PageUptodate(page)) {
+					error = lock_page_killable(page);
+					if (unlikely(error))
+						goto readpage_error;
+
+					if (!PageUptodate(page)) {
+						unlock_page(page);
+						shrink_readahead_size_eio(filp, ra);
+						error = -EIO;
+						goto readpage_error;
+					}
+				}
 			}
 			unlock_page(page);
 		}
@@ -1799,7 +1822,7 @@ static int page_cache_read(struct file *file, pgoff_t offset)
 
 		ret = add_to_page_cache_lru(page, mapping, offset, GFP_KERNEL);
 		if (ret == 0)
-			ret = mapping->a_ops->readpage(file, page);
+			ret = remotecache_readpage(file, page);
 		else if (ret == -EEXIST)
 			ret = 0; /* losing race to add is OK */
 
@@ -1995,7 +2018,7 @@ page_not_uptodate:
 	 * and we need to check for errors.
 	 */
 	ClearPageError(page);
-	error = mapping->a_ops->readpage(file, page);
+	error = remotecache_readpage(file, page);
 	if (!error) {
 		wait_on_page_locked(page);
 		if (!PageUptodate(page))

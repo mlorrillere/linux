@@ -31,6 +31,7 @@
 #include <linux/security.h>
 #include <linux/gfp.h>
 #include <linux/socket.h>
+#include <linux/remotecache.h>
 #include <linux/compat.h>
 #include "internal.h"
 
@@ -435,7 +436,7 @@ __generic_file_splice_read(struct file *in, loff_t *ppos,
 			/*
 			 * need to read in the page
 			 */
-			error = mapping->a_ops->readpage(in, page);
+			error = remotecache_readpage(in, page);
 			if (unlikely(error)) {
 				/*
 				 * We really should re-lookup the page here,
