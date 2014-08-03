@@ -2186,6 +2186,10 @@ int __set_page_dirty_nobuffers(struct page *page)
 			account_page_dirtied(page, mapping);
 			radix_tree_tag_set(&mapping->page_tree,
 				page_index(page), PAGECACHE_TAG_DIRTY);
+#ifdef CONFIG_REMOTECACHE
+			radix_tree_tag_set(&mapping->page_tree,
+				page_index(page), PAGECACHE_TAG_DIRTIED);
+#endif
 		}
 		spin_unlock_irqrestore(&mapping->tree_lock, flags);
 		if (mapping->host) {
@@ -2416,6 +2420,10 @@ int __test_set_page_writeback(struct page *page, bool keep_write)
 			radix_tree_tag_set(&mapping->page_tree,
 						page_index(page),
 						PAGECACHE_TAG_WRITEBACK);
+#ifdef CONFIG_REMOTECACHE
+			radix_tree_tag_set(&mapping->page_tree,
+				page_index(page), PAGECACHE_TAG_DIRTIED);
+#endif
 			if (bdi_cap_account_writeback(bdi))
 				__inc_bdi_stat(bdi, BDI_WRITEBACK);
 		}

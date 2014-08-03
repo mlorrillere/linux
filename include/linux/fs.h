@@ -451,6 +451,10 @@ struct block_device {
 #define PAGECACHE_TAG_WRITEBACK	1
 #define PAGECACHE_TAG_TOWRITE	2
 
+#ifdef CONFIG_REMOTECACHE
+#define PAGECACHE_TAG_DIRTIED	3
+#endif
+
 int mapping_tagged(struct address_space *mapping, int tag);
 
 /*
