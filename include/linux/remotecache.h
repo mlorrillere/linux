@@ -13,7 +13,7 @@ struct remotecache_ops {
 	int (*readpage) (struct file *, struct page *);
 	int (*readpages) (struct file *, struct address_space *,
 			struct list_head *pages, unsigned nr_pages);
-	void (*releasepage) (struct page *page);
+	int (*releasepage) (struct page *page);
 	void (*start_plug)(struct remotecache_plug *plug);
 	void (*finish_plug)(struct remotecache_plug *plug);
 	void (*flush_plug)(struct task_struct *tsk);
@@ -57,10 +57,11 @@ static inline bool remotecache_needs_flush_plug(struct task_struct *tsk)
 	return plug && !list_empty(&plug->list);
 }
 
-static inline void remotecache_releasepage(struct page *page)
+static inline int remotecache_releasepage(struct page *page)
 {
 	if (remotecache_ops && remotecache_ops->releasepage)
-		remotecache_ops->releasepage(page);
+		return remotecache_ops->releasepage(page);
+	return 1;
 }
 
 static inline void remotecache_suspend(void)
@@ -96,7 +97,7 @@ static inline bool remotecache_needs_flush_plug(struct task_struct *tsk)
 {
 	return false;
 }
-static inline void remotecache_releasepage(struct page *page) {}
+static inline int remotecache_releasepage(struct page *page) { return 1; }
 static inline void remotecache_suspend(void) {}
 static inline void remotecache_resume(void) {}
 #endif

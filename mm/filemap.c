@@ -2789,8 +2789,7 @@ int try_to_release_page(struct page *page, gfp_t gfp_mask)
 		return mapping->a_ops->releasepage(page, gfp_mask);
 #ifdef CONFIG_REMOTECACHE
 	else if (!mapping && PageRemote(page)) {
-		remotecache_releasepage(page);
-		return 1;
+		return remotecache_releasepage(page);
 	}
 #endif
 	return try_to_free_buffers(page);
