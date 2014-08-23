@@ -4,6 +4,7 @@
 #include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/buffer_head.h>
 
 struct remotecache_plug {
 	struct list_head list;
@@ -13,6 +14,7 @@ struct remotecache_ops {
 	int (*readpage) (struct file *, struct page *);
 	int (*readpages) (struct file *, struct address_space *,
 			struct list_head *pages, unsigned nr_pages);
+	void (*ll_rw_block) (int rw, struct buffer_head *);
 	int (*releasepage) (struct page *page);
 	void (*start_plug)(struct remotecache_plug *plug);
 	void (*finish_plug)(struct remotecache_plug *plug);
@@ -28,6 +30,14 @@ extern int remotecache_readpage(struct file *file, struct page *page);
 
 extern int remotecache_readpages(struct file *, struct address_space *,
 		struct list_head *pages, unsigned nr_pages);
+
+static inline void remotecache_ll_rw_block(int rw, struct buffer_head *bh)
+{
+	if (remotecache_ops && remotecache_ops->ll_rw_block)
+		remotecache_ops->ll_rw_block(rw, bh);
+	else
+		submit_bh(rw, bh);
+}
 
 extern void remotecache_register_ops(struct remotecache_ops *);
 
@@ -86,6 +96,11 @@ static inline int remotecache_readpages(struct file *file, struct address_space 
 		struct list_head *pages, unsigned nr_pages)
 {
 	return mapping->a_ops->readpages(file, mapping, pages, nr_pages);
+}
+
+static inline void remotecache_ll_rw_block(int rw, struct buffer_head *bh)
+{
+	submit_bh(rw, bh);
 }
 
 static inline void remotecache_register_ops(struct remotecache_ops *ops) { }

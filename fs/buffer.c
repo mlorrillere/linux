@@ -1914,20 +1914,6 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
 
 	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);
 
-#ifdef CONFIG_REMOTECACHE
-        if (!PageUptodate(page)) {
-		/*
-		 * Cleancache does not provides an API for ll_rw_block. We
-		 * cannot use remotecache_readpage as rely on
-		 * address_space->readpage wich releases the lock on the page,
-		 * and can lead to a race condition where the page is
-		 * reclaimed after the I/O but before we can get back the
-		 * lock.
-		 */
-		cleancache_invalidate_page(page->mapping, page);
-        }
-#endif
-
 	for(bh = head, block_start = 0; bh != head || !block_start;
 	    block++, block_start=block_end, bh = bh->b_this_page) {
 		block_end = block_start + blocksize;
@@ -3134,7 +3120,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhs[])
 			if (!buffer_uptodate(bh)) {
 				bh->b_end_io = end_buffer_read_sync;
 				get_bh(bh);
-				submit_bh(rw, bh);
+				remotecache_ll_rw_block(rw, bh);
 				continue;
 			}
 		}
