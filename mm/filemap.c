@@ -187,7 +187,7 @@ void __delete_from_page_cache(struct page *page, void *shadow)
 	 * invalidate any existing cleancache entries.  We can't leave
 	 * stale data around in the cleancache once our page is gone
 	 */
-	if (PageUptodate(page) && PageMappedToDisk(page))
+	if (PageUptodate(page))
 		cleancache_put_page(page);
 	else
 		cleancache_invalidate_page(mapping, page);
