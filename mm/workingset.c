@@ -12,6 +12,7 @@
 #include <linux/swap.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/remotecache.h>
 
 /*
  *		Double CLOCK lists
@@ -215,6 +216,11 @@ void *workingset_eviction(struct address_space *mapping, struct page *page)
 	struct zone *zone = page_zone(page);
 	unsigned long eviction;
 
+	/*
+	 * This should not happen.
+	 */
+	WARN_ON(PageRemote(page));
+
 	eviction = atomic_long_inc_return(&zone->inactive_age);
 	return pack_shadow(eviction, zone);
 }
@@ -238,6 +244,7 @@ bool workingset_refault(void *shadow)
 
 	if (refault_distance <= zone_page_state(zone, NR_ACTIVE_FILE)) {
 		inc_zone_state(zone, WORKINGSET_ACTIVATE);
+		remotecache_suspend(REMOTECACHE_SUSPEND_SHADOW);
 		return true;
 	}
 	return false;

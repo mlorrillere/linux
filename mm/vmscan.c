@@ -1814,6 +1814,37 @@ static inline int inactive_anon_is_low(struct lruvec *lruvec)
 }
 #endif
 
+#ifdef CONFIG_REMOTECACHE
+/**
+ * inactive_remotecache_is_high - check if there is more than ~90% of remote
+ * cache pages in the inactive list.
+ *
+ * All remote pages are stored in the inactive list, so if we need more
+ * memory to offer, we need to shrink the active list. However, we try to keep
+ * some pages in the active list (~5% or total cache).
+ */
+static int inactive_remotecache_is_high(struct lruvec *lruvec)
+{
+	struct zone *zone = lruvec_zone(lruvec);
+	unsigned long inactive;
+	unsigned long active;
+	unsigned long remote;
+
+	inactive = zone_page_state(zone, NR_INACTIVE_FILE);
+	active   = zone_page_state(zone, NR_ACTIVE_FILE);
+	remote   = zone_page_state(zone, NR_REMOTE);
+
+	return (int) (active << 4) > inactive &&
+		      (remote >> 3) > (inactive - remote) &&
+		      !remotecache_is_suspended();
+}
+#else
+static inline int inactive_remotecache_is_high(struct lruvec *lruvec)
+{
+	return 0;
+}
+#endif
+
 /**
  * inactive_file_is_low - check if file pages need to be deactivated
  * @lruvec: LRU vector to check
@@ -1851,8 +1882,14 @@ static unsigned long shrink_list(enum lru_list lru, unsigned long nr_to_scan,
 				 struct lruvec *lruvec, struct scan_control *sc)
 {
 	if (is_active_lru(lru)) {
-		if (inactive_list_is_low(lruvec, lru))
+		if (inactive_list_is_low(lruvec, lru)) {
+			if (is_file_lru(lru))
+				remotecache_suspend(REMOTECACHE_SUSPEND_INACTIVE_IS_LOW);
 			shrink_active_list(nr_to_scan, lruvec, sc, lru);
+		}
+		else if (is_file_lru(lru) && inactive_remotecache_is_high(lruvec)) {
+			shrink_active_list(nr_to_scan, lruvec, sc, lru);
+		}
 		return 0;
 	}
 

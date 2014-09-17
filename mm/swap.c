@@ -31,6 +31,7 @@
 #include <linux/memcontrol.h>
 #include <linux/gfp.h>
 #include <linux/uio.h>
+#include <linux/remotecache.h>
 
 #include "internal.h"
 
@@ -466,12 +467,17 @@ static void __activate_page(struct page *page, struct lruvec *lruvec,
 		int lru = page_lru_base_type(page);
 
 		del_page_from_lru_list(page, lruvec, lru);
-		SetPageActive(page);
-		lru += LRU_ACTIVE;
+
+		/* Keep remote cache pages in inactive list */
+		if (!PageRemote(page)) {
+			SetPageActive(page);
+			lru += LRU_ACTIVE;
+			__count_vm_event(PGACTIVATE);
+		}
+
 		add_page_to_lru_list(page, lruvec, lru);
 		trace_mm_lru_activate(page, page_to_pfn(page));
 
-		__count_vm_event(PGACTIVATE);
 		update_page_reclaim_stat(lruvec, file, 1);
 	}
 }
@@ -571,10 +577,11 @@ void mark_page_accessed(struct page *page)
 		 */
 		if (PageLRU(page))
 			activate_page(page);
-		else
+		else if (!PageRemote(page))
+			/* Keep remote cache pages in inactive list */
 			__lru_cache_activate_page(page);
 		ClearPageReferenced(page);
-		if (page_is_file_cache(page))
+		if (!PageRemote(page) && page_is_file_cache(page))
 			workingset_activation(page);
 	} else if (!PageReferenced(page)) {
 		SetPageReferenced(page);

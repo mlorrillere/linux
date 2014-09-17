@@ -10,6 +10,11 @@ struct remotecache_plug {
 	struct list_head list;
 };
 
+enum remotecache_suspend_mode {
+	REMOTECACHE_SUSPEND_SHADOW,
+	REMOTECACHE_SUSPEND_INACTIVE_IS_LOW
+};
+
 struct remotecache_ops {
 	int (*readpage) (struct file *, struct page *);
 	int (*readpages) (struct file *, struct address_space *,
@@ -19,8 +24,9 @@ struct remotecache_ops {
 	void (*start_plug)(struct remotecache_plug *plug);
 	void (*finish_plug)(struct remotecache_plug *plug);
 	void (*flush_plug)(struct task_struct *tsk);
-	void (*suspend) (void);
+	void (*suspend) (enum remotecache_suspend_mode mode);
 	void (*resume) (void);
+	bool (*is_suspended)(void);
 };
 
 #ifdef CONFIG_REMOTECACHE
@@ -74,10 +80,10 @@ static inline int remotecache_releasepage(struct page *page)
 	return 1;
 }
 
-static inline void remotecache_suspend(void)
+static inline void remotecache_suspend(enum remotecache_suspend_mode mode)
 {
 	if (remotecache_ops && remotecache_ops->suspend)
-		remotecache_ops->suspend();
+		remotecache_ops->suspend(mode);
 }
 
 static inline void remotecache_resume(void)
@@ -85,8 +91,14 @@ static inline void remotecache_resume(void)
 	if (remotecache_ops && remotecache_ops->resume)
 		remotecache_ops->resume();
 }
-#else
 
+static inline bool remotecache_is_suspended(void)
+{
+	if (remotecache_ops && remotecache_ops->is_suspended)
+		return remotecache_ops->is_suspended();
+	return false;
+}
+#else
 static inline int remotecache_readpage(struct file *file, struct page *page)
 {
 	return page->mapping->a_ops->readpage(file, page);
@@ -113,8 +125,12 @@ static inline bool remotecache_needs_flush_plug(struct task_struct *tsk)
 	return false;
 }
 static inline int remotecache_releasepage(struct page *page) { return 1; }
-static inline void remotecache_suspend(void) {}
+static inline void remotecache_suspend(enum remotecache_suspend_mode mode) {}
 static inline void remotecache_resume(void) {}
+static inline bool remotecache_is_suspended(void)
+{
+	return false;
+}
 #endif
 
 #endif /* _LINUX_REMOTECACHE_H */
