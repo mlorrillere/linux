@@ -1914,6 +1914,11 @@ int __block_write_begin(struct page *page, loff_t pos, unsigned len,
 
 	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);
 
+#ifdef CONFIG_REMOTECACHE
+	if (!PageUptodate(page))
+		remotecache_readpage_sync(NULL, page);
+#endif
+
 	for(bh = head, block_start = 0; bh != head || !block_start;
 	    block++, block_start=block_end, bh = bh->b_this_page) {
 		block_end = block_start + blocksize;
@@ -3113,7 +3118,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhs[])
 			if (test_clear_buffer_dirty(bh)) {
 				bh->b_end_io = end_buffer_write_sync;
 				get_bh(bh);
-				submit_bh(WRITE, bh);
+				remotecache_ll_rw_block(rw, bh);
 				continue;
 			}
 		} else {

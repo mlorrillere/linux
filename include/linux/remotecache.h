@@ -17,6 +17,7 @@ enum remotecache_suspend_mode {
 
 struct remotecache_ops {
 	int (*readpage) (struct file *, struct page *);
+	void (*readpage_sync) (struct file *, struct page *);
 	int (*readpages) (struct file *, struct address_space *,
 			struct list_head *pages, unsigned nr_pages);
 	void (*ll_rw_block) (int rw, struct buffer_head *);
@@ -31,6 +32,12 @@ struct remotecache_ops {
 
 #ifdef CONFIG_REMOTECACHE
 extern struct remotecache_ops *remotecache_ops;
+
+static inline void remotecache_readpage_sync(struct file *file, struct page *page)
+{
+	if (remotecache_ops && remotecache_ops->readpage_sync)
+		remotecache_ops->readpage_sync(file, page);
+}
 
 extern int remotecache_readpage(struct file *file, struct page *page);
 
@@ -99,6 +106,9 @@ static inline bool remotecache_is_suspended(void)
 	return false;
 }
 #else
+static inline void remotecache_readpage(struct file *file, struct page *page)
+{}
+
 static inline int remotecache_readpage(struct file *file, struct page *page)
 {
 	return page->mapping->a_ops->readpage(file, page);
