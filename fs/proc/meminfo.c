@@ -100,7 +100,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		"Inactive(file): %8lu kB\n"
 		"Unevictable:    %8lu kB\n"
 #ifdef CONFIG_REMOTECACHE
-		"Remote(pending): %8lu KB\n"
+		"Remote:         %8lu KB\n"
 #endif
 		"Mlocked:        %8lu kB\n"
 #ifdef CONFIG_HIGHMEM
