@@ -6568,6 +6568,7 @@ static const struct trace_print_flags pageflag_names[] = {
 #endif
 #ifdef CONFIG_REMOTECACHE
 	{1UL << PG_remote,		"remote"	},
+	{1UL << PG_should_remote,	"should_remote"	},
 #endif
 };
 

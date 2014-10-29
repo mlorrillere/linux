@@ -261,6 +261,9 @@ struct swap_list_t {
 };
 
 /* linux/mm/workingset.c */
+void unpack_shadow(void *shadow,
+			  struct zone **zone,
+			  unsigned long *distance);
 void *workingset_eviction(struct address_space *mapping, struct page *page);
 bool workingset_refault(void *shadow);
 void workingset_activation(struct page *page);

@@ -639,6 +639,8 @@ int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 			workingset_activation(page);
 		} else
 			ClearPageActive(page);
+		if (!shadow || remotecache_refault(shadow))
+			SetPageShouldRemote(page);
 		lru_cache_add(page);
 	}
 	return ret;

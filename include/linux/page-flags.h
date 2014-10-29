@@ -111,6 +111,7 @@ enum pageflags {
 #endif
 #ifdef CONFIG_REMOTECACHE
 	PG_remote,		/* Remote page */
+	PG_should_remote,	/* Should send this page */
 #endif
 	__NR_PAGEFLAGS,
 
@@ -216,6 +217,7 @@ __PAGEFLAG(SlobFree, slob_free)
 
 #ifdef CONFIG_REMOTECACHE
 PAGEFLAG(Remote, remote) TESTSCFLAG(Remote, remote)
+PAGEFLAG(ShouldRemote, should_remote) TESTSCFLAG(ShouldRemote, should_remote)
 #endif
 
 /*

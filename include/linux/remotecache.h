@@ -28,6 +28,7 @@ struct remotecache_ops {
 	void (*suspend) (enum remotecache_suspend_mode mode);
 	void (*resume) (void);
 	bool (*is_suspended)(void);
+	bool (*refault) (void *shadow);
 };
 
 #ifdef CONFIG_REMOTECACHE
@@ -105,6 +106,13 @@ static inline bool remotecache_is_suspended(void)
 		return remotecache_ops->is_suspended();
 	return false;
 }
+
+static inline bool remotecache_refault(void *shadow)
+{
+	if (remotecache_ops && remotecache_ops->refault)
+		return remotecache_ops->refault(shadow);
+	return false;
+}
 #else
 static inline void remotecache_readpage(struct file *file, struct page *page)
 {}
@@ -141,6 +149,8 @@ static inline bool remotecache_is_suspended(void)
 {
 	return false;
 }
+
+static inline bool remotecache_refault(void *shadow) { return false; }
 #endif
 
 #endif /* _LINUX_REMOTECACHE_H */

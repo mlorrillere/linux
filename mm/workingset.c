@@ -162,7 +162,7 @@ static void *pack_shadow(unsigned long eviction, struct zone *zone)
 	return (void *)(eviction | RADIX_TREE_EXCEPTIONAL_ENTRY);
 }
 
-static void unpack_shadow(void *shadow,
+void unpack_shadow(void *shadow,
 			  struct zone **zone,
 			  unsigned long *distance)
 {
@@ -202,6 +202,7 @@ static void unpack_shadow(void *shadow,
 	 */
 	*distance = (refault - eviction) & mask;
 }
+EXPORT_SYMBOL(unpack_shadow);
 
 /**
  * workingset_eviction - note the eviction of a page from memory
