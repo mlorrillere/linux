@@ -12,13 +12,6 @@ config REMOTECACHE_MODULE
 	help
 	  Enable support for remotecache
 
-config REMOTECACHE_POLICY_LRU
-	tristate "Remotecache LRU policy module"
-	default m
-	depends on REMOTECACHE_MODULE && m
-	help
-	  Simple LRU policy for page reclaiming.
-
 config REMOTECACHE_DEBUG
 	bool "Enable remotecache debug messages"
 	default n
