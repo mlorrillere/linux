@@ -111,7 +111,7 @@ enum pageflags {
 #endif
 #ifdef CONFIG_REMOTECACHE
 	PG_remote,		/* Remote page */
-	PG_should_remote,	/* Should send this page */
+	PG_keep_local,		/* Should send this page */
 #endif
 	__NR_PAGEFLAGS,
 
@@ -217,7 +217,8 @@ __PAGEFLAG(SlobFree, slob_free)
 
 #ifdef CONFIG_REMOTECACHE
 PAGEFLAG(Remote, remote) TESTSCFLAG(Remote, remote)
-PAGEFLAG(ShouldRemote, should_remote) TESTSCFLAG(ShouldRemote, should_remote)
+PAGEFLAG(KeepLocal, keep_local) TESTSCFLAG(KeepLocal, keep_local)
+	__CLEARPAGEFLAG(KeepLocal, keep_local)
 #endif
 
 /*
@@ -531,7 +532,7 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
 	 1 << PG_private | 1 << PG_private_2 | \
 	 1 << PG_writeback | 1 << PG_reserved | \
 	 1 << PG_slab	 | 1 << PG_swapcache | 1 << PG_active | \
-	 1 << PG_unevictable | 1 << PG_remote | \
+	 1 << PG_unevictable | 1 << PG_remote | 1 << PG_keep_local | \
 	 __PG_MLOCKED | __PG_HWPOISON | __PG_COMPOUND_LOCK)
 #endif
 

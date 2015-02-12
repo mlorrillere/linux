@@ -1108,6 +1108,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			nr_reclaimed++;
 			continue;
 		}
+		__ClearPageKeepLocal(page);
 #endif
 
 		/*

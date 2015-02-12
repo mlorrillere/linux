@@ -63,6 +63,9 @@ static void __page_cache_release(struct page *page)
 		del_page_from_lru_list(page, lruvec, page_off_lru(page));
 		spin_unlock_irqrestore(&zone->lru_lock, flags);
 	}
+#ifdef CONFIG_REMOTECACHE
+	__ClearPageKeepLocal(page);
+#endif
 }
 
 static void __put_single_page(struct page *page)
@@ -853,6 +856,10 @@ void release_pages(struct page **pages, int nr, int cold)
 
 		if (!put_page_testzero(page))
 			continue;
+
+#ifdef CONFIG_REMOTECACHE
+		__ClearPageKeepLocal(page);
+#endif
 
 		if (PageLRU(page)) {
 			struct zone *pagezone = page_zone(page);
