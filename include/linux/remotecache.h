@@ -29,6 +29,8 @@ struct remotecache_ops {
 	void (*resume) (void);
 	bool (*is_suspended)(void);
 	bool (*refault) (void *shadow);
+	int (*inactive_is_high) (unsigned long active, unsigned long inactive,
+			unsigned long remote);
 };
 
 #ifdef CONFIG_REMOTECACHE
@@ -113,6 +115,16 @@ static inline bool remotecache_refault(void *shadow)
 		return remotecache_ops->refault(shadow);
 	return false;
 }
+
+static inline int remotecache_inactive_is_high(unsigned long active,
+					       unsigned long inactive,
+					       unsigned long remote)
+{
+	if (remotecache_ops && remotecache_ops->inactive_is_high)
+		return remotecache_ops->inactive_is_high(active,
+				inactive, remote);
+	return false;
+}
 #else
 static inline void remotecache_readpage(struct file *file, struct page *page)
 {}
@@ -146,6 +158,13 @@ static inline int remotecache_releasepage(struct page *page) { return 1; }
 static inline void remotecache_suspend(enum remotecache_suspend_mode mode) {}
 static inline void remotecache_resume(void) {}
 static inline bool remotecache_is_suspended(void)
+{
+	return false;
+}
+
+static inline int remotecache_inactive_is_high(unsigned long,
+					       unsigned long,
+					       unsigned long)
 {
 	return false;
 }

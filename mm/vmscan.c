@@ -1835,9 +1835,7 @@ static int inactive_remotecache_is_high(struct lruvec *lruvec)
 	active   = zone_page_state(zone, NR_ACTIVE_FILE);
 	remote   = zone_page_state(zone, NR_REMOTE);
 
-	return (int) (active << 4) > inactive &&
-		      (remote >> 3) > (inactive - remote) &&
-		      !remotecache_is_suspended();
+	return remotecache_inactive_is_high(active, inactive, remote);
 }
 #else
 static inline int inactive_remotecache_is_high(struct lruvec *lruvec)
